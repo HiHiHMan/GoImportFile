@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -36,12 +35,13 @@ func openXLSX(path string)(rowReader,error) {
 func(x *xlsxRows)Next()([]string,error){ if !x.rows.Next(){ if err:=x.rows.Error();err!=nil{return nil,err};return nil,io.EOF }; return x.rows.Columns() }
 func(x *xlsxRows)Close()error{ _=x.rows.Close(); return x.f.Close() }
 
-type xlsRows struct { sheet *xls.WorkSheet; index int }
+type xlsRows struct { file *os.File; sheet *xls.WorkSheet; index int }
 func openXLS(path string)(rowReader,error) {
-	book,err:=xls.Open(path,"utf-8"); if err!=nil{return nil,err}
-	if book.NumSheets()==0{return nil,fmt.Errorf("Excel ไม่มี Sheet")}
-	sheet:=book.GetSheet(0); if sheet==nil{return nil,fmt.Errorf("อ่าน Sheet แรกไม่ได้")}
-	return &xlsRows{sheet:sheet},nil
+	f,err:=os.Open(path); if err!=nil{return nil,err}
+	book,err:=xls.OpenReader(f,"utf-8"); if err!=nil{_ = f.Close();return nil,err}
+	if book.NumSheets()==0{_ = f.Close();return nil,fmt.Errorf("Excel ไม่มี Sheet")}
+	sheet:=book.GetSheet(0); if sheet==nil{_ = f.Close();return nil,fmt.Errorf("อ่าน Sheet แรกไม่ได้")}
+	return &xlsRows{file:f,sheet:sheet},nil
 }
 func(x *xlsRows)Next()([]string,error) {
 	for x.index<=int(x.sheet.MaxRow) {
@@ -52,7 +52,7 @@ func(x *xlsRows)Next()([]string,error) {
 	}
 	return nil,io.EOF
 }
-func(x *xlsRows)Close()error{return nil}
+func(x *xlsRows)Close()error{return x.file.Close()}
 
 func(a *App)runImport(ctx context.Context,path,ext string)(int64,error) {
 	var rr rowReader; var err error
@@ -128,4 +128,3 @@ func(a *App)bulkInsert(ctx context.Context,mapping []columnMapping,batch [][]int
 }
 func quoteIdentifier(s string)string{return "["+strings.ReplaceAll(s,"]","]]")+"]"}
 
-var _ *sql.DB
