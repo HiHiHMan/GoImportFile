@@ -47,7 +47,7 @@ func(x *xlsRows)Next()([]string,error) {
 	for x.index<=int(x.sheet.MaxRow) {
 		row:=x.sheet.Row(x.index); x.index++
 		if row==nil { continue }
-		cols:=make([]string,row.LastCol()); for i:=range cols { cols[i]=row.Col(i) }
+		cols:=make([]string,row.LastCol()+1); for i:=range cols { cols[i]=row.Col(i) }
 		return cols,nil
 	}
 	return nil,io.EOF
