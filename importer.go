@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	mssql "github.com/denisenkom/go-mssqldb"
 	"github.com/extrame/xls"
@@ -65,6 +66,8 @@ func(a *App)runImport(ctx context.Context,path,ext,originalFilename string)(int6
 	mapping,err:=a.mapColumns(ctx,len(header)); if err!=nil{return 0,err}
 	originalFilename=filepath.Base(originalFilename)
 	originalFilename=strings.TrimSuffix(originalFilename,filepath.Ext(originalFilename))
+	if err:=a.deleteExistingTagName(ctx,mapping[0].Destination,originalFilename); err!=nil{return 0,err}
+	createdAt:=time.Now()
 	batch:=make([][]interface{},0,a.cfg.BatchSize)
 	var total int64
 	flush:=func()error {
@@ -78,8 +81,12 @@ func(a *App)runImport(ctx context.Context,path,ext,originalFilename string)(int6
 		if readErr==io.EOF{break}; if readErr!=nil{return total,fmt.Errorf("อ่านข้อมูลแถวถัดไปไม่สำเร็จ: %w",readErr)}
 		values:=make([]interface{},len(mapping))
 		for i,m:=range mapping {
-			if m.SourceIndex < 0 {
+			if m.SourceIndex == -1 {
 				values[i]=originalFilename
+				continue
+			}
+			if m.SourceIndex == -2 {
+				values[i]=createdAt
 				continue
 			}
 			if m.SourceIndex>=len(record) || strings.TrimSpace(record[m.SourceIndex])=="" { values[i]=nil } else { values[i]=record[m.SourceIndex] }
@@ -89,6 +96,14 @@ func(a *App)runImport(ctx context.Context,path,ext,originalFilename string)(int6
 	}
 	if err:=flush();err!=nil{return total,err}
 	return total,nil
+}
+
+// deleteExistingTagName removes the previous import with the same TagName before replacement.
+func(a *App)deleteExistingTagName(ctx context.Context,column,tagName string)error {
+	table:=quoteIdentifier(a.cfg.Schema)+"."+quoteIdentifier(a.cfg.Table)
+	query:="DELETE FROM "+table+" WHERE "+quoteIdentifier(column)+"=@p1"
+	if _,err:=a.db.ExecContext(ctx,query,tagName);err!=nil{return fmt.Errorf("SQL: ลบข้อมูลเดิมของ TagName %q ไม่สำเร็จ: %w",tagName,err)}
+	return nil
 }
 
 // mapColumns maps file columns to SQL columns strictly by ordinal position.
@@ -107,16 +122,20 @@ func(a *App)mapColumns(ctx context.Context,sourceColumnCount int)([]columnMappin
 	if len(destinations)==0 {
 		return nil,fmt.Errorf("ไม่พบคอลัมน์ในตารางปลายทาง")
 	}
-	if sourceColumnCount > len(destinations)-1 {
-		return nil,fmt.Errorf("จำนวนคอลัมน์ในไฟล์เกินกว่าตารางปลายทาง: ไฟล์มี %d คอลัมน์ แต่ตาราง %s.%s รองรับข้อมูลได้สูงสุด %d คอลัมน์ เมื่อสงวน Col0 สำหรับชื่อไฟล์",sourceColumnCount,a.cfg.Schema,a.cfg.Table,len(destinations)-1)
+	if len(destinations) < 2 {
+		return nil,fmt.Errorf("ตาราง %s.%s ต้องมีคอลัมน์สำหรับ TagName และ CreateAt อย่างน้อย 2 คอลัมน์",a.cfg.Schema,a.cfg.Table)
+	}
+	if sourceColumnCount > len(destinations)-2 {
+		return nil,fmt.Errorf("จำนวนคอลัมน์ในไฟล์เกินกว่าตารางปลายทาง: ไฟล์มี %d คอลัมน์ แต่ตาราง %s.%s รองรับข้อมูลได้สูงสุด %d คอลัมน์ เมื่อสงวน Col0 สำหรับ TagName และ Col1 สำหรับ CreateAt",sourceColumnCount,a.cfg.Schema,a.cfg.Table,len(destinations)-2)
 	}
 
-	// Col0 stores the original uploaded filename; source data starts at Col1.
+	// Col0 stores TagName, Col1 stores the import timestamp, and source data starts at Col2.
 	// Remaining destination columns are omitted so SQL Server can apply DEFAULT or NULL.
-	mapping:=make([]columnMapping,sourceColumnCount+1)
+	mapping:=make([]columnMapping,sourceColumnCount+2)
 	mapping[0]=columnMapping{SourceIndex:-1,Destination:destinations[0]}
+	mapping[1]=columnMapping{SourceIndex:-2,Destination:destinations[1]}
 	for i:=0;i<sourceColumnCount;i++ {
-		mapping[i+1]=columnMapping{SourceIndex:i,Destination:destinations[i+1]}
+		mapping[i+2]=columnMapping{SourceIndex:i,Destination:destinations[i+2]}
 	}
 	return mapping,nil
 }
