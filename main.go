@@ -53,9 +53,7 @@ func loadDotEnv(path string) error {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	lineNumber := 0
 	for scanner.Scan() {
-		lineNumber++
 		line := strings.TrimSpace(strings.TrimPrefix(scanner.Text(), "\uFEFF"))
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
