@@ -257,7 +257,6 @@
     const fileExt = document.getElementById('fileExt');
     const tagName = document.getElementById('tagName');
     const fileType = document.getElementById('fileType');
-    const fileType = document.getElementById('fileType');
     const progressSteps = [document.getElementById('stepPrepare'), document.getElementById('stepUpload'), document.getElementById('stepSave')];
     function setStep(activeIndex, completed = false) {
       progressSteps.forEach((step, index) => {
@@ -293,28 +292,25 @@
       resultDetail.textContent = detail || '';
     }
 
-    let fileReadToken = 0;
-
-    function readFileChunk(file, start, end) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve();
-        reader.onerror = () => reject(reader.error || new Error('อ่านไฟล์ไม่สำเร็จ'));
-        reader.readAsArrayBuffer(file.slice(start, end));
-      });
-    }
-
-    async function setFile(file) {
+    function setFile(file) {
       if (!file) return;
       const extension = file.name.split('.').pop().toLowerCase();
       if (!allowedExtensions.includes(extension)) {
         fileInput.value = '';
         fileInfo.classList.remove('visible');
+        submitButton.disabled = false;
+        uploadProgress.classList.remove('visible');
         showResult('error', 'ไม่รองรับไฟล์นี้', 'กรุณาเลือกไฟล์ .csv, .xlsx หรือ .xls');
         return;
       }
-
-      const token = ++fileReadToken;
+      if (file.size === 0) {
+        fileInput.value = '';
+        fileInfo.classList.remove('visible');
+        submitButton.disabled = false;
+        uploadProgress.classList.remove('visible');
+        showResult('error', 'ไฟล์ว่างเปล่า', 'กรุณาเลือกไฟล์ที่มีข้อมูล');
+        return;
+      }
       const transfer = new DataTransfer();
       transfer.items.add(file);
       fileInput.files = transfer.files;
@@ -324,59 +320,19 @@
       fileSize.textContent = formatSize(file.size);
       fileExt.textContent = extension.toUpperCase();
       fileType.textContent = extension.toUpperCase();
-      fileType.textContent = extension.toUpperCase();
       fileInfo.classList.add('visible');
+      uploadProgress.classList.remove('visible');
       result.className = 'result';
-      submitButton.disabled = true;
-
-      uploadProgress.classList.add('visible');
-      setStep(0);
-      setStep(0);
-      progressTitle.textContent = 'กำลังเตรียมไฟล์';
-      progressStatus.textContent = 'กำลังอ่านไฟล์...';
-      progressBar.classList.add('preparing');
-      progressBar.style.width = '0%';
-      progressPercent.textContent = '0%';
-      progressSize.textContent = '0 B / ' + formatSize(file.size);
-      progressTrack.setAttribute('aria-valuenow', '0');
-
-      try {
-        const chunkSize = 8 * 1024 * 1024;
-        if (file.size === 0) throw new Error('ไฟล์ว่างเปล่า');
-        for (let offset = 0; offset < file.size; offset += chunkSize) {
-          await readFileChunk(file, offset, Math.min(offset + chunkSize, file.size));
-          if (token !== fileReadToken) return;
-          const loaded = Math.min(offset + chunkSize, file.size);
-          const percent = Math.round((loaded / file.size) * 100);
-          progressBar.style.width = percent + '%';
-          progressPercent.textContent = percent + '%';
-          progressSize.textContent = formatSize(loaded) + ' / ' + formatSize(file.size);
-          progressTrack.setAttribute('aria-valuenow', String(percent));
-        }
-        if (token !== fileReadToken) return;
-        setStep(0, true);
-        setStep(0, true);
-        progressTitle.textContent = 'เตรียมไฟล์เรียบร้อย';
-        progressStatus.textContent = 'พร้อมนำเข้า';
-        submitButton.disabled = false;
-      } catch (error) {
-        if (token !== fileReadToken) return;
-        progressTitle.textContent = 'เตรียมไฟล์ไม่สำเร็จ';
-        progressStatus.textContent = 'เกิดข้อผิดพลาด';
-        showResult('error', 'อ่านไฟล์ไม่สำเร็จ', error.message);
-        submitButton.disabled = true;
-      }
+      submitButton.disabled = false;
     }
 
     fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
     removeFile.addEventListener('click', event => {
       event.preventDefault();
       event.stopPropagation();
-      fileReadToken++;
       fileInput.value = '';
       fileInfo.classList.remove('visible');
       uploadProgress.classList.remove('visible');
-      fileType.textContent = 'ยังไม่เลือก';
       submitButton.disabled = false;
       tagName.textContent = '-';
       fileType.textContent = 'ยังไม่เลือก';
@@ -413,7 +369,7 @@
 
       result.className = 'result';
       uploadProgress.classList.add('visible');
-      setStep(1);
+      setStep(0, true);
       setStep(1);
       progressTitle.textContent = 'กำลังอัปโหลดไฟล์';
       progressStatus.textContent = 'กำลังส่งข้อมูล...';
@@ -439,7 +395,6 @@
         progressTrack.setAttribute('aria-valuenow', String(percent));
         if (percent >= 100) {
           setStep(2);
-          setStep(2);
           progressTitle.textContent = 'อัปโหลดไฟล์แล้ว';
           progressStatus.textContent = 'กำลังบันทึกลงฐานข้อมูล...';
           submitText.textContent = 'กำลังบันทึกข้อมูล...';
@@ -461,7 +416,6 @@
         progressBar.style.width = '100%';
         progressPercent.textContent = '100%';
         progressSize.textContent = formatSize(file.size) + ' / ' + formatSize(file.size);
-        setStep(2, true);
         setStep(2, true);
         progressTitle.textContent = 'ดำเนินการเสร็จสิ้น';
         progressStatus.textContent = 'สำเร็จ';
