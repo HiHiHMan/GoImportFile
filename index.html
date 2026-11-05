@@ -96,7 +96,6 @@
     }
     .file-meta { min-width: 0; flex: 1; }
     .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; }
-    .tag-name { margin-top: 4px; color: var(--primary); font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
     .file-size { margin-top: 4px; color: var(--muted); font-size: 11px; }
     .remove-file {
       width: 30px; height: 30px; border: 0; border-radius: 8px; color: #667085;
@@ -184,7 +183,7 @@
             <input id="fileInput" name="file" type="file" accept=".csv,.xlsx,.xls" required>
             <span class="file-info" id="fileInfo">
               <span class="file-icon" id="fileExt">FILE</span>
-              <span class="file-meta"><span class="file-name" id="fileName"></span><span class="tag-name" id="tagName"></span><span class="file-size" id="fileSize"></span></span>
+              <span class="file-meta"><span class="file-name" id="fileName"></span><span class="file-size" id="fileSize"></span></span>
               <button class="remove-file" id="removeFile" type="button" aria-label="นำไฟล์ออก">&times;</button>
             </span>
           </label>
@@ -193,6 +192,7 @@
             <div class="setting"><div class="setting-label">รูปแบบการนำเข้า</div><div class="setting-value">Append only</div></div>
             <div class="setting"><div class="setting-label">Batch size</div><div class="setting-value">500 rows</div></div>
             <div class="setting"><div class="setting-label">การทำงาน</div><div class="setting-value">1 job at a time</div></div>
+            <div class="setting"><div class="setting-label">TagName</div><div class="setting-value" id="tagName">-</div></div>
           </div>
 
           <div class="actions">
@@ -234,9 +234,9 @@
     const dropzone = document.getElementById('dropzone');
     const fileInfo = document.getElementById('fileInfo');
     const fileName = document.getElementById('fileName');
-    const tagName = document.getElementById('tagName');
     const fileSize = document.getElementById('fileSize');
     const fileExt = document.getElementById('fileExt');
+    const tagName = document.getElementById('tagName');
     const removeFile = document.getElementById('removeFile');
     const submitButton = document.getElementById('submitButton');
     const submitText = document.getElementById('submitText');
@@ -278,8 +278,7 @@
       transfer.items.add(file);
       fileInput.files = transfer.files;
       fileName.textContent = file.name;
-      const nameWithoutExtension = file.name.replace(/\\.[^.]+$/, '');
-      tagName.textContent = 'TagName : ' + nameWithoutExtension;
+      tagName.textContent = file.name.replace(/\\.[^.]+$/, '');
       fileSize.textContent = formatSize(file.size);
       fileExt.textContent = extension.toUpperCase();
       fileInfo.classList.add('visible');
@@ -293,6 +292,7 @@
       event.stopPropagation();
       fileInput.value = '';
       fileInfo.classList.remove('visible');
+      tagName.textContent = '-';
       result.className = 'result';
     });
 
