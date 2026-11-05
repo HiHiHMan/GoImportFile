@@ -8,7 +8,7 @@ Go web application for importing CSV, XLSX and legacy XLS files into an existing
 - XLSX: Excelize row iterator
 - XLS: `github.com/extrame/xls`
 - SQL Server: pure-Go `github.com/denisenkom/go-mssqldb` driver; no OLEDB/ODBC dependency
-- SQL writes: SQL Server bulk-copy protocol through `mssql.CopyIn`
+- SQL writes: SQL Server bulk-copy protocol through `go-mssqldb`'s `CreateBulkContext`
 - One import at a time; rows are processed in batches (default 500)
 - Header names are mapped case-insensitively to existing SQL table columns
 - Credentials are read from environment variables, never from source code
@@ -57,6 +57,7 @@ The API response reports imported row count and elapsed time. The target table i
 - One import at a time.
 - Default batch size: 500 rows.
 - XLSX is read using a row iterator; CSV uses a streaming reader.
+- The legacy XLS reader parses the binary workbook internally, so its memory use can be higher than CSV/XLSX. For large datasets, prefer XLSX or CSV.
 - Upload size is bounded by `IMPORT_MAX_UPLOAD_MB`.
 - SQL connection pool is intentionally small.
 
