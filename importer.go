@@ -97,11 +97,17 @@ func(a *App)mapColumns(ctx context.Context,sourceColumnCount int)([]columnMappin
 		destinations=append(destinations,name)
 	}
 	if err:=rows.Err();err!=nil{return nil,err}
-	if sourceColumnCount!=len(destinations) {
-		return nil,fmt.Errorf("จำนวนคอลัมน์ไม่ตรงกัน: ไฟล์มี %d คอลัมน์ แต่ตาราง %s.%s มี %d คอลัมน์ (ไม่นับ IDENTITY)",sourceColumnCount,a.cfg.Schema,a.cfg.Table,len(destinations))
+	if sourceColumnCount > len(destinations) {
+		return nil,fmt.Errorf("จำนวนคอลัมน์ในไฟล์เกินกว่าตารางปลายทาง: ไฟล์มี %d คอลัมน์ แต่ตาราง %s.%s รองรับได้สูงสุด %d คอลัมน์ (ไม่นับ IDENTITY)",sourceColumnCount,a.cfg.Schema,a.cfg.Table,len(destinations))
 	}
-	mapping:=make([]columnMapping,len(destinations))
-	for i,name:=range destinations { mapping[i]=columnMapping{SourceIndex:i,Destination:name} }
+
+	// Import only the columns present in the source file, by ordinal position.
+	// Remaining destination columns are omitted from Bulk Copy so SQL Server
+	// can apply their DEFAULT or NULL values.
+	mapping:=make([]columnMapping,sourceColumnCount)
+	for i:=0;i<sourceColumnCount;i++ {
+		mapping[i]=columnMapping{SourceIndex:i,Destination:destinations[i]}
+	}
 	return mapping,nil
 }
 
