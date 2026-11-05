@@ -192,7 +192,7 @@ func (a *App) importFile(w http.ResponseWriter,r *http.Request) {
 
 	start:=time.Now()
 	ctx,cancel:=context.WithTimeout(r.Context(),2*time.Hour); defer cancel()
-	rows,err:=a.runImport(ctx,tmpName,ext)
+	rows,err:=a.runImport(ctx,tmpName,ext,header.Filename)
 	if err!=nil {
 		status:=http.StatusBadRequest
 		if errors.Is(err,context.DeadlineExceeded) { status=http.StatusGatewayTimeout } else if strings.Contains(err.Error(),"SQL") { status=http.StatusInternalServerError }
