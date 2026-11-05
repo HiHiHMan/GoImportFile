@@ -60,9 +60,8 @@ func(a *App)runImport(ctx context.Context,path,ext string)(int64,error) {
 	if err!=nil{return 0,fmt.Errorf("เปิดไฟล์ไม่สำเร็จ: %w",err)}
 	defer rr.Close()
 	header,err:=rr.Next(); if err!=nil{return 0,fmt.Errorf("อ่าน Header ไม่สำเร็จ: %w",err)}
-	if len(header)==0{return 0,fmt.Errorf("ไม่พบชื่อคอลัมน์ใน Header")}
-	mapping,err:=a.mapColumns(ctx,header); if err!=nil{return 0,err}
-	if len(mapping)==0{return 0,fmt.Errorf("ไม่พบคอลัมน์ที่จับคู่ได้")}
+	if len(header)==0{return 0,fmt.Errorf("ไม่พบ Header ในไฟล์")}
+	mapping,err:=a.mapColumns(ctx,len(header)); if err!=nil{return 0,err}
 	batch:=make([][]interface{},0,a.cfg.BatchSize)
 	var total int64
 	flush:=func()error {
@@ -85,23 +84,24 @@ func(a *App)runImport(ctx context.Context,path,ext string)(int64,error) {
 	return total,nil
 }
 
-func(a *App)mapColumns(ctx context.Context,header []string)([]columnMapping,error) {
+// mapColumns maps file columns to SQL columns strictly by ordinal position.
+// Header text is intentionally ignored; the first row is skipped as a header.
+func(a *App)mapColumns(ctx context.Context,sourceColumnCount int)([]columnMapping,error) {
 	rows,err:=a.db.QueryContext(ctx,`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=@p1 AND TABLE_NAME=@p2 AND COLUMNPROPERTY(OBJECT_ID(QUOTENAME(TABLE_SCHEMA)+'.'+QUOTENAME(TABLE_NAME)), COLUMN_NAME, 'IsIdentity')=0 ORDER BY ORDINAL_POSITION`,a.cfg.Schema,a.cfg.Table)
 	if err!=nil{return nil,fmt.Errorf("SQL: อ่านโครงสร้างตารางไม่สำเร็จ: %w",err)}
 	defer rows.Close()
-	source:=make(map[string]int,len(header))
-	for i,h:=range header {
-		key:=strings.ToLower(strings.TrimSpace(strings.TrimPrefix(h,"\ufeff")))
-		if key!="" {source[key]=i}
-	}
-	var mapping []columnMapping
+	var destinations []string
 	for rows.Next(){
 		var name string
 		if err:=rows.Scan(&name);err!=nil{return nil,err}
-		if i,ok:=source[strings.ToLower(name)];ok {mapping=append(mapping,columnMapping{SourceIndex:i,Destination:name})}
+		destinations=append(destinations,name)
 	}
 	if err:=rows.Err();err!=nil{return nil,err}
-	if len(mapping)==0{return nil,fmt.Errorf("Header ไม่มีชื่อคอลัมน์ที่ตรงกับ SQL Table %s.%s",a.cfg.Schema,a.cfg.Table)}
+	if sourceColumnCount!=len(destinations) {
+		return nil,fmt.Errorf("จำนวนคอลัมน์ไม่ตรงกัน: ไฟล์มี %d คอลัมน์ แต่ตาราง %s.%s มี %d คอลัมน์ (ไม่นับ IDENTITY)",sourceColumnCount,a.cfg.Schema,a.cfg.Table,len(destinations))
+	}
+	mapping:=make([]columnMapping,len(destinations))
+	for i,name:=range destinations { mapping[i]=columnMapping{SourceIndex:i,Destination:name} }
 	return mapping,nil
 }
 
@@ -127,4 +127,3 @@ func(a *App)bulkInsert(ctx context.Context,mapping []columnMapping,batch [][]int
 	return affected,nil
 }
 func quoteIdentifier(s string)string{return "["+strings.ReplaceAll(s,"]","]]")+"]"}
-
