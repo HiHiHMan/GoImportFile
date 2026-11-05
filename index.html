@@ -25,7 +25,7 @@
     body {
       margin: 0;
       min-height: 100vh;
-      padding: 42px 20px;
+      padding: 48px 20px;
       display: grid;
       place-items: center;
       background:
@@ -103,7 +103,7 @@
     }
     .remove-file:hover { background: #f2f4f7; color: var(--danger); }
     .settings {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px;
     }
     .setting { min-width: 0; padding: 14px 15px; border: 1px solid var(--line); border-radius: 11px; background: #fcfdfd; }
     .setting-label { color: var(--muted); font-size: 11px; }
@@ -121,7 +121,14 @@
     .secure-note { color: var(--muted); font-size: 11px; line-height: 1.5; }
     .upload-progress { display: none; margin-top: 22px; padding: 15px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fbfcfe; }
     .upload-progress.visible { display: block; }
-    .progress-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 0 17px; }\n    .progress-step { display: flex; align-items: center; gap: 9px; color: #98a2b3; font-size: 12px; font-weight: 650; }\n    .step-number { width: 26px; height: 26px; flex: 0 0 26px; display: grid; place-items: center; border: 1px solid #d0d5dd; border-radius: 50%; background: #fff; font-size: 11px; }\n    .progress-step.active { color: var(--primary); }\n    .progress-step.active .step-number { border-color: var(--primary); color: #fff; background: var(--primary); }\n    .progress-step.done { color: var(--success); }\n    .progress-step.done .step-number { border-color: #abefc6; color: var(--success); background: #ecfdf3; }\n    .progress-heading { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; font-size: 12px; font-weight: 700; }
+    .progress-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 0 17px; }
+    .progress-step { display: flex; align-items: center; gap: 9px; color: #98a2b3; font-size: 12px; font-weight: 650; }
+    .step-number { width: 26px; height: 26px; flex: 0 0 26px; display: grid; place-items: center; border: 1px solid #d0d5dd; border-radius: 50%; background: #fff; font-size: 11px; }
+    .progress-step.active { color: var(--primary); }
+    .progress-step.active .step-number { border-color: var(--primary); color: #fff; background: var(--primary); }
+    .progress-step.done { color: var(--success); }
+    .progress-step.done .step-number { border-color: #abefc6; color: var(--success); background: #ecfdf3; }
+    .progress-heading { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; font-size: 12px; font-weight: 700; }
     .progress-status { color: var(--muted); font-weight: 500; }
     .progress-track { height: 9px; overflow: hidden; border-radius: 999px; background: #e9eef2; }
     .progress-bar { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #176b62, #36a58f); transition: width .15s ease; }
@@ -135,7 +142,11 @@
     .result.success { border-color: #abefc6; background: #ecfdf3; color: #05603a; }
     .result.error { border-color: #fecdca; background: #fef3f2; color: #912018; }
     .result-title { font-size: 13px; font-weight: 800; }
-    .result-detail { margin-top: 8px; font-size: 12px; line-height: 1.8; white-space: pre-line; }\n    .result-stats { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 12px; }\n    .result-stat { padding: 9px 12px; border: 1px solid rgba(6,118,71,.14); border-radius: 9px; background: rgba(255,255,255,.72); }\n    .result-stat span { display: block; font-size: 10px; opacity: .72; }\n    .result-stat strong { display: block; margin-top: 3px; font-size: 15px; }
+    .result-detail { margin-top: 8px; font-size: 12px; line-height: 1.8; white-space: pre-line; }
+    .result-stats { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 12px; }
+    .result-stat { padding: 9px 12px; border: 1px solid rgba(6,118,71,.14); border-radius: 9px; background: rgba(255,255,255,.72); }
+    .result-stat span { display: block; font-size: 10px; opacity: .72; }
+    .result-stat strong { display: block; margin-top: 3px; font-size: 15px; }
     .spinner {
       width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4);
       border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite;
@@ -145,7 +156,9 @@
     @media (max-width: 600px) {
       body { padding: 22px 12px; }
       .card-head { padding: 29px 22px 20px; }
-      .card-body { padding: 0 22px 25px; }\n      .progress-steps { gap: 5px; }\n      .progress-step { flex-direction: column; text-align: center; gap: 5px; font-size: 10px; }
+      .card-body { padding: 0 22px 25px; }
+      .progress-steps { gap: 5px; }
+      .progress-step { flex-direction: column; text-align: center; gap: 5px; font-size: 10px; }
       .settings { grid-template-columns: repeat(2, 1fr); }
       .setting { display: flex; justify-content: space-between; align-items: center; }
       .setting-value { margin-top: 0; }
@@ -167,9 +180,9 @@
 
     <section class="card">
       <div class="card-head">
-        <span class="eyebrow"><span aria-hidden="true">●</span> DATA MANAGEMENT</span>
-        <h1>นำเข้าข้อมูลเข้าสู่ระบบ</h1>
-        <p class="intro">เลือกไฟล์ข้อมูลที่ต้องการนำเข้า ระบบจะจัดเก็บข้อมูลลง SQL Server ตามโครงสร้างตารางที่กำหนดไว้</p>
+        <span class="eyebrow"><span aria-hidden="true">●</span> DATA IMPORT SYSTEM</span>
+        <h1>ImportPool</h1>
+        <p class="intro">นำเข้าข้อมูลจาก CSV และ Excel เข้าสู่ SQL Server<br>จัดการไฟล์ ตรวจสอบสถานะ และติดตามผลการนำเข้าได้ในหน้าเดียว</p>
       </div>
 
       <div class="card-body">
@@ -190,10 +203,10 @@
           </label>
 
           <div class="settings" aria-label="รายละเอียดการนำเข้า">
-            <div class="setting"><div class="setting-label">รูปแบบการนำเข้า</div><div class="setting-value">Append only</div></div>
-            <div class="setting"><div class="setting-label">Batch size</div><div class="setting-value">500 rows</div></div>
-            <div class="setting"><div class="setting-label">การทำงาน</div><div class="setting-value">1 job at a time</div></div>
             <div class="setting"><div class="setting-label">TagName</div><div class="setting-value" id="tagName">-</div></div>
+            <div class="setting"><div class="setting-label">รูปแบบไฟล์</div><div class="setting-value" id="fileType">ยังไม่เลือก</div></div>
+            <div class="setting"><div class="setting-label">ปลายทาง</div><div class="setting-value">Tbl_ImportPool</div></div>
+            <div class="setting"><div class="setting-label">Batch size</div><div class="setting-value">500 rows</div></div>
           </div>
 
           <div class="actions">
@@ -206,6 +219,11 @@
         </form>
 
         <section class="upload-progress" id="uploadProgress" aria-live="polite">
+          <div class="progress-steps" aria-label="ขั้นตอนการนำเข้า">
+            <div class="progress-step" id="stepPrepare"><span class="step-number">1</span><span>เตรียมไฟล์</span></div>
+            <div class="progress-step" id="stepUpload"><span class="step-number">2</span><span>อัปโหลดไฟล์</span></div>
+            <div class="progress-step" id="stepSave"><span class="step-number">3</span><span>บันทึกฐานข้อมูล</span></div>
+          </div>
           <div class="progress-heading">
             <span id="progressTitle">กำลังอัปโหลดไฟล์</span>
             <span class="progress-status" id="progressStatus">กำลังส่งข้อมูล...</span>
@@ -237,7 +255,16 @@
     const fileName = document.getElementById('fileName');
     const fileSize = document.getElementById('fileSize');
     const fileExt = document.getElementById('fileExt');
-    const tagName = document.getElementById('tagName');\n    const fileType = document.getElementById('fileType');\n    const progressSteps = [document.getElementById('stepPrepare'), document.getElementById('stepUpload'), document.getElementById('stepSave')];\n    function setStep(activeIndex, completed = false) {\n      progressSteps.forEach((step, index) => {\n        step.classList.toggle('done', index < activeIndex || (completed && index === activeIndex));\n        step.classList.toggle('active', index === activeIndex && !completed);\n      });\n    }
+    const tagName = document.getElementById('tagName');
+    const fileType = document.getElementById('fileType');
+    const fileType = document.getElementById('fileType');
+    const progressSteps = [document.getElementById('stepPrepare'), document.getElementById('stepUpload'), document.getElementById('stepSave')];
+    function setStep(activeIndex, completed = false) {
+      progressSteps.forEach((step, index) => {
+        step.classList.toggle('done', index < activeIndex || (completed && index === activeIndex));
+        step.classList.toggle('active', index === activeIndex && !completed);
+      });
+    }
     const removeFile = document.getElementById('removeFile');
     const submitButton = document.getElementById('submitButton');
     const submitText = document.getElementById('submitText');
@@ -295,13 +322,16 @@
       const extensionIndex = file.name.lastIndexOf('.');
       tagName.textContent = extensionIndex > 0 ? file.name.slice(0, extensionIndex) : file.name;
       fileSize.textContent = formatSize(file.size);
-      fileExt.textContent = extension.toUpperCase();\n      fileType.textContent = extension.toUpperCase();
+      fileExt.textContent = extension.toUpperCase();
+      fileType.textContent = extension.toUpperCase();
+      fileType.textContent = extension.toUpperCase();
       fileInfo.classList.add('visible');
       result.className = 'result';
       submitButton.disabled = true;
 
       uploadProgress.classList.add('visible');
-      setStep(0);\n      progressTitle.textContent = 'กำลังเตรียมไฟล์';
+      setStep(0);
+      progressTitle.textContent = 'กำลังเตรียมไฟล์';
       progressStatus.textContent = 'กำลังอ่านไฟล์...';
       progressBar.classList.add('preparing');
       progressBar.style.width = '0%';
@@ -323,7 +353,8 @@
           progressTrack.setAttribute('aria-valuenow', String(percent));
         }
         if (token !== fileReadToken) return;
-        setStep(0, true);\n        progressTitle.textContent = 'เตรียมไฟล์เรียบร้อย';
+        setStep(0, true);
+        progressTitle.textContent = 'เตรียมไฟล์เรียบร้อย';
         progressStatus.textContent = 'พร้อมนำเข้า';
         submitButton.disabled = false;
       } catch (error) {
@@ -343,8 +374,10 @@
       fileInput.value = '';
       fileInfo.classList.remove('visible');
       uploadProgress.classList.remove('visible');
+      fileType.textContent = 'ยังไม่เลือก';
       submitButton.disabled = false;
-      tagName.textContent = '-';\n      fileType.textContent = 'ยังไม่เลือก';
+      tagName.textContent = '-';
+      fileType.textContent = 'ยังไม่เลือก';
       result.className = 'result';
     });
 
@@ -378,7 +411,8 @@
 
       result.className = 'result';
       uploadProgress.classList.add('visible');
-      setStep(1);\n      progressTitle.textContent = 'กำลังอัปโหลดไฟล์';
+      setStep(1);
+      progressTitle.textContent = 'กำลังอัปโหลดไฟล์';
       progressStatus.textContent = 'กำลังส่งข้อมูล...';
       progressBar.classList.remove('preparing');
       progressBar.style.width = '0%';
@@ -401,7 +435,8 @@
         progressSize.textContent = formatSize(event.loaded) + ' / ' + formatSize(event.total);
         progressTrack.setAttribute('aria-valuenow', String(percent));
         if (percent >= 100) {
-          setStep(2);\n          progressTitle.textContent = 'อัปโหลดไฟล์แล้ว';
+          setStep(2);
+          progressTitle.textContent = 'อัปโหลดไฟล์แล้ว';
           progressStatus.textContent = 'กำลังบันทึกลงฐานข้อมูล...';
           submitText.textContent = 'กำลังบันทึกข้อมูล...';
         }
@@ -422,7 +457,8 @@
         progressBar.style.width = '100%';
         progressPercent.textContent = '100%';
         progressSize.textContent = formatSize(file.size) + ' / ' + formatSize(file.size);
-        setStep(2, true);\n        progressTitle.textContent = 'ดำเนินการเสร็จสิ้น';
+        setStep(2, true);
+        progressTitle.textContent = 'ดำเนินการเสร็จสิ้น';
         progressStatus.textContent = 'สำเร็จ';
         const details = [];
         if (Number.isFinite(Number(data.rows))) details.push('จำนวนแถวที่นำเข้า: ' + Number(data.rows).toLocaleString('th-TH') + ' แถว');
