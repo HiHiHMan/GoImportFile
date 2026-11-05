@@ -67,7 +67,7 @@ func(a *App)runImport(ctx context.Context,path,ext,originalFilename string)(int6
 	originalFilename=filepath.Base(originalFilename)
 	originalFilename=strings.TrimSuffix(originalFilename,filepath.Ext(originalFilename))
 	if err:=a.deleteExistingTagName(ctx,mapping[0].Destination,originalFilename); err!=nil{return 0,err}
-	createdAt:=time.Now().Format("2006-01-02 15:04:05")
+	createdAt:=time.Now().Format("2006-01-02")
 	batch:=make([][]interface{},0,a.cfg.BatchSize)
 	var total int64
 	flush:=func()error {
