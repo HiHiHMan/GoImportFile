@@ -119,6 +119,13 @@
     .submit:disabled { opacity: .55; cursor: not-allowed; }
     .submit svg { width: 18px; height: 18px; }
     .secure-note { color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .upload-progress { display: none; margin-top: 20px; padding: 15px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fbfcfe; }
+    .upload-progress.visible { display: block; }
+    .progress-heading { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; font-size: 12px; font-weight: 700; }
+    .progress-status { color: var(--muted); font-weight: 500; }
+    .progress-track { height: 9px; overflow: hidden; border-radius: 999px; background: #e9eef2; }
+    .progress-bar { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #176b62, #36a58f); transition: width .15s ease; }
+    .progress-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; color: var(--muted); font-size: 11px; }
     .result {
       display: none; margin-top: 18px; padding: 15px 16px; border-radius: 11px;
       border: 1px solid var(--line); background: #f8fafc;
@@ -196,6 +203,20 @@
           </div>
         </form>
 
+        <section class="upload-progress" id="uploadProgress" aria-live="polite">
+          <div class="progress-heading">
+            <span id="progressTitle">กำลังอัปโหลดไฟล์</span>
+            <span class="progress-status" id="progressStatus">กำลังส่งข้อมูล...</span>
+          </div>
+          <div class="progress-track" role="progressbar" aria-label="ความคืบหน้าการอัปโหลด" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressTrack">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <div class="progress-meta">
+            <span id="progressSize">กำลังเตรียมไฟล์...</span>
+            <strong id="progressPercent">0%</strong>
+          </div>
+        </section>
+
         <section class="result" id="result" role="status" aria-live="polite">
           <div class="result-title" id="resultTitle"></div>
           <div class="result-detail" id="resultDetail"></div>
@@ -221,6 +242,13 @@
     const result = document.getElementById('result');
     const resultTitle = document.getElementById('resultTitle');
     const resultDetail = document.getElementById('resultDetail');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressTitle = document.getElementById('progressTitle');
+    const progressStatus = document.getElementById('progressStatus');
+    const progressTrack = document.getElementById('progressTrack');
+    const progressBar = document.getElementById('progressBar');
+    const progressSize = document.getElementById('progressSize');
+    const progressPercent = document.getElementById('progressPercent');
 
     const allowedExtensions = ['csv', 'xlsx', 'xls'];
     const formatSize = bytes => {
@@ -252,6 +280,7 @@
       fileExt.textContent = extension.toUpperCase();
       fileInfo.classList.add('visible');
       result.className = 'result';
+      uploadProgress.classList.remove('visible');
     }
 
     fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
@@ -276,7 +305,7 @@
       if (file) setFile(file);
     });
 
-    form.addEventListener('submit', async event => {
+    form.addEventListener('submit', event => {
       event.preventDefault();
       const file = fileInput.files[0];
       if (!file) {
@@ -286,35 +315,82 @@
 
       submitButton.disabled = true;
       submitIcon.style.display = 'none';
-      submitText.textContent = 'กำลังนำเข้าข้อมูล...';
+      submitText.textContent = 'กำลังอัปโหลด...';
       const spinner = document.createElement('span');
       spinner.className = 'spinner';
       submitButton.prepend(spinner);
-      showResult('', 'กำลังประมวลผลไฟล์', 'กรุณาอย่าปิดหน้าเว็บจนกว่าระบบจะทำงานเสร็จ');
 
-      try {
-        const response = await fetch('/api/import', { method: 'POST', body: new FormData(form) });
-        let data;
-        try { data = await response.json(); }
-        catch { throw new Error('เซิร์ฟเวอร์ส่งผลลัพธ์กลับมาในรูปแบบที่ไม่ถูกต้อง'); }
+      result.className = 'result';
+      uploadProgress.classList.add('visible');
+      progressTitle.textContent = 'กำลังอัปโหลดไฟล์';
+      progressStatus.textContent = 'กำลังส่งข้อมูล...';
+      progressBar.style.width = '0%';
+      progressPercent.textContent = '0%';
+      progressSize.textContent = '0 B / ' + formatSize(file.size);
+      progressTrack.setAttribute('aria-valuenow', '0');
 
-        if (!response.ok || !data.success) {
-          showResult('error', 'นำเข้าข้อมูลไม่สำเร็จ', data.message || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์');
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/import');
+      xhr.responseType = 'json';
+
+      xhr.upload.addEventListener('progress', event => {
+        if (!event.lengthComputable) {
+          progressStatus.textContent = 'กำลังส่งข้อมูล...';
+          return;
+        }
+        const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+        progressBar.style.width = percent + '%';
+        progressPercent.textContent = percent + '%';
+        progressSize.textContent = formatSize(event.loaded) + ' / ' + formatSize(event.total);
+        progressTrack.setAttribute('aria-valuenow', String(percent));
+        if (percent >= 100) {
+          progressTitle.textContent = 'อัปโหลดไฟล์แล้ว';
+          progressStatus.textContent = 'กำลังบันทึกลงฐานข้อมูล...';
+          submitText.textContent = 'กำลังบันทึกข้อมูล...';
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        let data = xhr.response;
+        if (!data && xhr.responseText) {
+          try { data = JSON.parse(xhr.responseText); } catch {}
+        }
+
+        if (xhr.status < 200 || xhr.status >= 300 || !data || !data.success) {
+          progressStatus.textContent = 'ไม่สำเร็จ';
+          showResult('error', 'นำเข้าข้อมูลไม่สำเร็จ', data?.message || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์');
           return;
         }
 
+        progressBar.style.width = '100%';
+        progressPercent.textContent = '100%';
+        progressSize.textContent = formatSize(file.size) + ' / ' + formatSize(file.size);
+        progressTitle.textContent = 'ดำเนินการเสร็จสิ้น';
+        progressStatus.textContent = 'สำเร็จ';
         const details = [];
         if (Number.isFinite(Number(data.rows))) details.push('จำนวนแถวที่นำเข้า: ' + Number(data.rows).toLocaleString('th-TH') + ' แถว');
         if (data.elapsed) details.push('ใช้เวลา: ' + data.elapsed);
-        showResult('success', 'นำเข้าข้อมูลสำเร็จ', details.join('\n'));
-      } catch (error) {
-        showResult('error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์', error.message);
-      } finally {
+        showResult('success', 'นำเข้าข้อมูลสำเร็จ', details.join('\\n'));
+      });
+
+      xhr.addEventListener('error', () => {
+        progressStatus.textContent = 'เชื่อมต่อไม่สำเร็จ';
+        showResult('error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์', 'กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง');
+      });
+
+      xhr.addEventListener('abort', () => {
+        progressStatus.textContent = 'ยกเลิกแล้ว';
+        showResult('error', 'ยกเลิกการอัปโหลด', 'การส่งไฟล์ถูกยกเลิก');
+      });
+
+      xhr.addEventListener('loadend', () => {
         submitButton.disabled = false;
         spinner.remove();
         submitIcon.style.display = '';
         submitText.textContent = 'เริ่มนำเข้าข้อมูล';
-      }
+      });
+
+      xhr.send(new FormData(form));
     });
   </script>
 </body>
