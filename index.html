@@ -331,6 +331,7 @@
 
       uploadProgress.classList.add('visible');
       setStep(0);
+      setStep(0);
       progressTitle.textContent = 'กำลังเตรียมไฟล์';
       progressStatus.textContent = 'กำลังอ่านไฟล์...';
       progressBar.classList.add('preparing');
@@ -353,6 +354,7 @@
           progressTrack.setAttribute('aria-valuenow', String(percent));
         }
         if (token !== fileReadToken) return;
+        setStep(0, true);
         setStep(0, true);
         progressTitle.textContent = 'เตรียมไฟล์เรียบร้อย';
         progressStatus.textContent = 'พร้อมนำเข้า';
@@ -412,6 +414,7 @@
       result.className = 'result';
       uploadProgress.classList.add('visible');
       setStep(1);
+      setStep(1);
       progressTitle.textContent = 'กำลังอัปโหลดไฟล์';
       progressStatus.textContent = 'กำลังส่งข้อมูล...';
       progressBar.classList.remove('preparing');
@@ -436,6 +439,7 @@
         progressTrack.setAttribute('aria-valuenow', String(percent));
         if (percent >= 100) {
           setStep(2);
+          setStep(2);
           progressTitle.textContent = 'อัปโหลดไฟล์แล้ว';
           progressStatus.textContent = 'กำลังบันทึกลงฐานข้อมูล...';
           submitText.textContent = 'กำลังบันทึกข้อมูล...';
@@ -458,12 +462,17 @@
         progressPercent.textContent = '100%';
         progressSize.textContent = formatSize(file.size) + ' / ' + formatSize(file.size);
         setStep(2, true);
+        setStep(2, true);
         progressTitle.textContent = 'ดำเนินการเสร็จสิ้น';
         progressStatus.textContent = 'สำเร็จ';
         const details = [];
-        if (Number.isFinite(Number(data.rows))) details.push('จำนวนแถวที่นำเข้า: ' + Number(data.rows).toLocaleString('th-TH') + ' แถว');
         if (data.elapsed) details.push('ใช้เวลา: ' + data.elapsed);
-        showResult('success', 'นำเข้าข้อมูลสำเร็จ', details.join('\\n'));
+        const rowCount = Number.isFinite(Number(data.rows)) ? Number(data.rows).toLocaleString('th-TH') : '-';
+        showResult('success', 'นำเข้าข้อมูลสำเร็จ', 'TagName: ' + tagName.textContent + (details.length ? '\n' + details.join('\n') : ''));
+        const stats = document.createElement('div');
+        stats.className = 'result-stats';
+        stats.innerHTML = '<div class="result-stat"><span>จำนวนแถวที่นำเข้า</span><strong>' + rowCount + ' แถว</strong></div><div class="result-stat"><span>สถานะ</span><strong>สำเร็จ</strong></div>';
+        result.appendChild(stats);
       });
 
       xhr.addEventListener('error', () => {
