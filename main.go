@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -39,6 +40,58 @@ type importResponse struct {
 	Elapsed string `json:"elapsed,omitempty"`
 }
 
+// loadDotEnv loads KEY=VALUE pairs from .env without overriding existing
+// environment variables. The .env file is optional and must not be committed.
+func loadDotEnv(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	lineNumber := 0
+	for scanner.Scan() {
+		lineNumber++
+		line := strings.TrimSpace(strings.TrimPrefix(scanner.Text(), "\uFEFF"))
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if key == "" {
+			continue
+		}
+
+		// Remove matching surrounding quotes.
+		if len(value) >= 2 {
+			if (value[0] == '"' && value[len(value)-1] == '"') ||
+				(value[0] == '\'' && value[len(value)-1] == '\'') {
+				value = value[1 : len(value)-1]
+			}
+		}
+
+		if _, exists := os.LookupEnv(key); exists {
+			continue
+		}
+		if err := os.Setenv(key, value); err != nil {
+			return err
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func env(key, fallback string) string {
 	if value := strings.TrimSpace(os.Getenv(key)); value != "" { return value }
 	return fallback
@@ -55,7 +108,7 @@ func loadConfig() Config {
 		SQLPort: env("SQLSERVER_PORT", "1433"),
 		SQLUser: env("SQLSERVER_USER", ""),
 		SQLPassword: os.Getenv("SQLSERVER_PASSWORD"),
-		SQLDatabase: env("SQLSERVER_DATABASE", "An_DB"),
+		SQLDatabase: env("SQLSERVER_DATABASE", "SystemValue"),
 		SQLEncrypt: env("SQLSERVER_ENCRYPT", "disable"),
 		Schema: env("IMPORT_SCHEMA", "dbo"),
 		Table: env("IMPORT_TABLE", "Tbl_ImportPool"),
@@ -66,9 +119,13 @@ func loadConfig() Config {
 }
 
 func main() {
+	if err := loadDotEnv(".env"); err != nil {
+		log.Fatalf("Failed to load .env: %v", err)
+	}
+
 	cfg := loadConfig()
 	if cfg.SQLUser == "" || cfg.SQLPassword == "" {
-		log.Fatal("SQLSERVER_USER and SQLSERVER_PASSWORD must be configured")
+		log.Fatal("SQLSERVER_USER and SQLSERVER_PASSWORD must be configured in .env or environment variables")
 	}
 	query := url.Values{}
 	query.Set("database", cfg.SQLDatabase)
@@ -162,4 +219,3 @@ func (a *App) importFile(w http.ResponseWriter,r *http.Request) {
 	}
 	writeJSON(w,http.StatusOK,importResponse{Success:true,Message:"นำเข้าข้อมูลสำเร็จ",Rows:rows,Elapsed:time.Since(start).Round(time.Millisecond).String()})
 }
-
