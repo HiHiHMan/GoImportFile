@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	mssql "github.com/denisenkom/go-mssqldb"
@@ -54,7 +55,7 @@ func(x *xlsRows)Next()([]string,error) {
 }
 func(x *xlsRows)Close()error{return x.file.Close()}
 
-func(a *App)runImport(ctx context.Context,path,ext string)(int64,error) {
+func(a *App)runImport(ctx context.Context,path,ext,originalFilename string)(int64,error) {
 	var rr rowReader; var err error
 	switch ext {case ".csv":rr,err=openCSV(path);case ".xlsx":rr,err=openXLSX(path);case ".xls":rr,err=openXLS(path)}
 	if err!=nil{return 0,fmt.Errorf("เปิดไฟล์ไม่สำเร็จ: %w",err)}
@@ -62,6 +63,7 @@ func(a *App)runImport(ctx context.Context,path,ext string)(int64,error) {
 	header,err:=rr.Next(); if err!=nil{return 0,fmt.Errorf("อ่าน Header ไม่สำเร็จ: %w",err)}
 	if len(header)==0{return 0,fmt.Errorf("ไม่พบ Header ในไฟล์")}
 	mapping,err:=a.mapColumns(ctx,len(header)); if err!=nil{return 0,err}
+	originalFilename=filepath.Base(originalFilename)
 	batch:=make([][]interface{},0,a.cfg.BatchSize)
 	var total int64
 	flush:=func()error {
@@ -75,6 +77,10 @@ func(a *App)runImport(ctx context.Context,path,ext string)(int64,error) {
 		if readErr==io.EOF{break}; if readErr!=nil{return total,fmt.Errorf("อ่านข้อมูลแถวถัดไปไม่สำเร็จ: %w",readErr)}
 		values:=make([]interface{},len(mapping))
 		for i,m:=range mapping {
+			if m.SourceIndex < 0 {
+				values[i]=originalFilename
+				continue
+			}
 			if m.SourceIndex>=len(record) || strings.TrimSpace(record[m.SourceIndex])=="" { values[i]=nil } else { values[i]=record[m.SourceIndex] }
 		}
 		batch=append(batch,values)
@@ -97,16 +103,19 @@ func(a *App)mapColumns(ctx context.Context,sourceColumnCount int)([]columnMappin
 		destinations=append(destinations,name)
 	}
 	if err:=rows.Err();err!=nil{return nil,err}
-	if sourceColumnCount > len(destinations) {
-		return nil,fmt.Errorf("จำนวนคอลัมน์ในไฟล์เกินกว่าตารางปลายทาง: ไฟล์มี %d คอลัมน์ แต่ตาราง %s.%s รองรับได้สูงสุด %d คอลัมน์ (ไม่นับ IDENTITY)",sourceColumnCount,a.cfg.Schema,a.cfg.Table,len(destinations))
+	if len(destinations)==0 {
+		return nil,fmt.Errorf("ไม่พบคอลัมน์ในตารางปลายทาง")
+	}
+	if sourceColumnCount > len(destinations)-1 {
+		return nil,fmt.Errorf("จำนวนคอลัมน์ในไฟล์เกินกว่าตารางปลายทาง: ไฟล์มี %d คอลัมน์ แต่ตาราง %s.%s รองรับข้อมูลได้สูงสุด %d คอลัมน์ เมื่อสงวน Col0 สำหรับชื่อไฟล์",sourceColumnCount,a.cfg.Schema,a.cfg.Table,len(destinations)-1)
 	}
 
-	// Import only the columns present in the source file, by ordinal position.
-	// Remaining destination columns are omitted from Bulk Copy so SQL Server
-	// can apply their DEFAULT or NULL values.
-	mapping:=make([]columnMapping,sourceColumnCount)
+	// Col0 stores the original uploaded filename; source data starts at Col1.
+	// Remaining destination columns are omitted so SQL Server can apply DEFAULT or NULL.
+	mapping:=make([]columnMapping,sourceColumnCount+1)
+	mapping[0]=columnMapping{SourceIndex:-1,Destination:destinations[0]}
 	for i:=0;i<sourceColumnCount;i++ {
-		mapping[i]=columnMapping{SourceIndex:i,Destination:destinations[i]}
+		mapping[i+1]=columnMapping{SourceIndex:i,Destination:destinations[i+1]}
 	}
 	return mapping,nil
 }
