@@ -10,6 +10,8 @@ Go web application for importing CSV, XLSX and legacy XLS files into an existing
 - SQL Server: pure-Go `github.com/denisenkom/go-mssqldb` driver; no OLEDB/ODBC dependency
 - SQL writes: SQL Server bulk-copy protocol through `go-mssqldb`'s `CreateBulkContext`
 - One import at a time; rows are processed in batches (default 500)
+- `Col0` stores the uploaded filename without its extension (TagName); `Col1` stores the import timestamp; source file columns begin at `Col2`.
+- Before importing, existing rows with the same TagName in `Col0` are deleted, then the new rows are appended.
 - Source columns are mapped by ordinal position to destination columns; files may contain fewer columns than the destination table
 - Credentials are read from environment variables, never from source code
 
@@ -47,7 +49,9 @@ The API response reports imported row count and elapsed time. The target table i
 - The first row is treated as a header and skipped; header names are ignored.
 - XLSX and XLS read the first worksheet only.
 - Empty cells are sent as SQL NULL.
-- Files may contain fewer columns than the destination table. Source columns map to the first N non-IDENTITY destination columns by ordinal position; remaining destination columns are omitted from Bulk Copy so SQL Server can apply DEFAULT or NULL values. Files with more columns than the destination table are rejected.
+- `Col0` stores the source filename without its extension; `Col1` stores the current import date/time (same timestamp for every row in one import); source file columns map by ordinal position starting at `Col2`.
+- Before inserting, all existing rows whose `Col0` equals the incoming TagName are deleted. The new import then replaces that TagName dataset.
+- Files may contain fewer columns than the destination table. Remaining destination columns are omitted from Bulk Copy so SQL Server can apply DEFAULT or NULL values. Files with more columns than the available columns after `Col0` and `Col1` are rejected.
 - Header names must match existing SQL column names (case-insensitive).
 - Validation and persistent import logs are disabled as requested. Essential file-type/header/table checks remain enabled for safe operation.
 - Bulk-copy commits are made per batch. If a later batch fails, previously committed batches remain inserted; this is append mode, not an all-file atomic transaction.
