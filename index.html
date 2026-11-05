@@ -278,7 +278,8 @@
       transfer.items.add(file);
       fileInput.files = transfer.files;
       fileName.textContent = file.name;
-      tagName.textContent = file.name.replace(/\\.[^.]+$/, '');
+      const extensionIndex = file.name.lastIndexOf('.');
+      tagName.textContent = extensionIndex > 0 ? file.name.slice(0, extensionIndex) : file.name;
       fileSize.textContent = formatSize(file.size);
       fileExt.textContent = extension.toUpperCase();
       fileInfo.classList.add('visible');
