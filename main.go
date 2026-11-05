@@ -5,17 +5,16 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"net"
+	"net/url"
 	"html/template"
 	"io"
 	"log"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	_ "github.com/denisenkom/go-mssqldb"
@@ -71,8 +70,12 @@ func main() {
 	if cfg.SQLUser == "" || cfg.SQLPassword == "" {
 		log.Fatal("SQLSERVER_USER and SQLSERVER_PASSWORD must be configured")
 	}
-	dsn := fmt.Sprintf("server=%s;port=%s;user id=%s;password=%s;database=%s;encrypt=%s;app name=GoImportFile;connection timeout=10",
-		cfg.SQLHost, cfg.SQLPort, cfg.SQLUser, cfg.SQLPassword, cfg.SQLDatabase, cfg.SQLEncrypt)
+	query := url.Values{}
+	query.Set("database", cfg.SQLDatabase)
+	query.Set("encrypt", cfg.SQLEncrypt)
+	query.Set("connection timeout", "10")
+	query.Set("app name", "GoImportFile")
+	dsn := (&url.URL{Scheme: "sqlserver", User: url.UserPassword(cfg.SQLUser, cfg.SQLPassword), Host: net.JoinHostPort(cfg.SQLHost, cfg.SQLPort), RawQuery: query.Encode()}).String()
 	db, err := sql.Open("sqlserver", dsn)
 	if err != nil { log.Fatal(err) }
 	db.SetMaxOpenConns(2)
@@ -160,5 +163,3 @@ func (a *App) importFile(w http.ResponseWriter,r *http.Request) {
 	writeJSON(w,http.StatusOK,importResponse{Success:true,Message:"นำเข้าข้อมูลสำเร็จ",Rows:rows,Elapsed:time.Since(start).Round(time.Millisecond).String()})
 }
 
-var _ multipart.File
-var _ sync.Locker
