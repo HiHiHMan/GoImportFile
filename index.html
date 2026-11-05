@@ -125,6 +125,7 @@
     .progress-status { color: var(--muted); font-weight: 500; }
     .progress-track { height: 9px; overflow: hidden; border-radius: 999px; background: #e9eef2; }
     .progress-bar { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #176b62, #36a58f); transition: width .15s ease; }
+    .progress-bar.preparing { background: linear-gradient(90deg, #4c8fc7, #72b7e8); }
     .progress-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; color: var(--muted); font-size: 11px; }
     .result {
       display: none; margin-top: 18px; padding: 15px 16px; border-radius: 11px;
@@ -265,7 +266,18 @@
       resultDetail.textContent = detail || '';
     }
 
-    function setFile(file) {
+    let fileReadToken = 0;
+
+    function readFileChunk(file, start, end) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve();
+        reader.onerror = () => reject(reader.error || new Error('อ่านไฟล์ไม่สำเร็จ'));
+        reader.readAsArrayBuffer(file.slice(start, end));
+      });
+    }
+
+    async function setFile(file) {
       if (!file) return;
       const extension = file.name.split('.').pop().toLowerCase();
       if (!allowedExtensions.includes(extension)) {
@@ -274,6 +286,8 @@
         showResult('error', 'ไม่รองรับไฟล์นี้', 'กรุณาเลือกไฟล์ .csv, .xlsx หรือ .xls');
         return;
       }
+
+      const token = ++fileReadToken;
       const transfer = new DataTransfer();
       transfer.items.add(file);
       fileInput.files = transfer.files;
@@ -284,15 +298,52 @@
       fileExt.textContent = extension.toUpperCase();
       fileInfo.classList.add('visible');
       result.className = 'result';
-      uploadProgress.classList.remove('visible');
+      submitButton.disabled = true;
+
+      uploadProgress.classList.add('visible');
+      progressTitle.textContent = 'กำลังเตรียมไฟล์';
+      progressStatus.textContent = 'กำลังอ่านไฟล์...';
+      progressBar.classList.add('preparing');
+      progressBar.style.width = '0%';
+      progressPercent.textContent = '0%';
+      progressSize.textContent = '0 B / ' + formatSize(file.size);
+      progressTrack.setAttribute('aria-valuenow', '0');
+
+      try {
+        const chunkSize = 8 * 1024 * 1024;
+        if (file.size === 0) throw new Error('ไฟล์ว่างเปล่า');
+        for (let offset = 0; offset < file.size; offset += chunkSize) {
+          await readFileChunk(file, offset, Math.min(offset + chunkSize, file.size));
+          if (token !== fileReadToken) return;
+          const loaded = Math.min(offset + chunkSize, file.size);
+          const percent = Math.round((loaded / file.size) * 100);
+          progressBar.style.width = percent + '%';
+          progressPercent.textContent = percent + '%';
+          progressSize.textContent = formatSize(loaded) + ' / ' + formatSize(file.size);
+          progressTrack.setAttribute('aria-valuenow', String(percent));
+        }
+        if (token !== fileReadToken) return;
+        progressTitle.textContent = 'เตรียมไฟล์เรียบร้อย';
+        progressStatus.textContent = 'พร้อมนำเข้า';
+        submitButton.disabled = false;
+      } catch (error) {
+        if (token !== fileReadToken) return;
+        progressTitle.textContent = 'เตรียมไฟล์ไม่สำเร็จ';
+        progressStatus.textContent = 'เกิดข้อผิดพลาด';
+        showResult('error', 'อ่านไฟล์ไม่สำเร็จ', error.message);
+        submitButton.disabled = true;
+      }
     }
 
     fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
     removeFile.addEventListener('click', event => {
       event.preventDefault();
       event.stopPropagation();
+      fileReadToken++;
       fileInput.value = '';
       fileInfo.classList.remove('visible');
+      uploadProgress.classList.remove('visible');
+      submitButton.disabled = false;
       tagName.textContent = '-';
       result.className = 'result';
     });
@@ -329,6 +380,7 @@
       uploadProgress.classList.add('visible');
       progressTitle.textContent = 'กำลังอัปโหลดไฟล์';
       progressStatus.textContent = 'กำลังส่งข้อมูล...';
+      progressBar.classList.remove('preparing');
       progressBar.style.width = '0%';
       progressPercent.textContent = '0%';
       progressSize.textContent = '0 B / ' + formatSize(file.size);
