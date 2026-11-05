@@ -8,7 +8,7 @@ import (
 	"errors"
 	"net"
 	"net/url"
-	"html/template"
+	_ "embed"
 	"io"
 	"log"
 	"net/http"
@@ -160,31 +160,14 @@ func securityHeaders(next http.Handler) http.Handler {
 	})
 }
 
-var page = template.Must(template.New("index").Parse(`<!doctype html>
-<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GoImportFile</title><style>
-*{box-sizing:border-box}body{font:16px system-ui,sans-serif;background:#f3f5f8;color:#182230;margin:0;display:grid;place-items:center;min-height:100vh}
-main{background:white;width:min(560px,92vw);padding:30px;border-radius:16px;box-shadow:0 12px 40px #18223012}
-h1{margin:0 0 8px}p{color:#586579}.drop{display:block;border:2px dashed #aab5c4;border-radius:12px;padding:28px;text-align:center;margin:22px 0}
-input{max-width:100%;margin-top:12px}button{background:#1769aa;color:white;border:0;border-radius:9px;padding:12px 18px;font-size:16px;cursor:pointer}
-button:disabled{opacity:.5;cursor:wait}#result{white-space:pre-wrap;margin-top:18px}
-small{color:#687588}
-</style></head><body><main><h1>GoImportFile</h1><p>นำเข้า CSV / XLSX / XLS ไปยัง SQL Server</p>
-<form id="form"><label class="drop">เลือกไฟล์สำหรับนำเข้า<br><input type="file" name="file" accept=".csv,.xlsx,.xls" required></label>
-<button id="submit">เริ่ม Import</button></form><div id="result" role="status"></div>
-<small>นำเข้าทีละ 500 แถว และทำงานพร้อมกันได้ 1 งาน</small></main>
-<script>
-const form=document.querySelector('#form'),btn=document.querySelector('#submit'),out=document.querySelector('#result');
-form.addEventListener('submit',async e=>{e.preventDefault();btn.disabled=true;out.textContent='กำลังนำเข้าข้อมูล...';
-try{const res=await fetch('/api/import',{method:'POST',body:new FormData(form)});const data=await res.json();out.textContent=data.message+(data.rows?'\nจำนวนแถว: '+data.rows:'')+(data.elapsed?'\nเวลา: '+data.elapsed:'');}
-catch(err){out.textContent='เกิดข้อผิดพลาด: '+err.message;}finally{btn.disabled=false;}});
-</script></body></html>`))
+//go:embed index.html
+var indexHTML []byte
 
 func (a *App) index(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" { http.NotFound(w,r); return }
 	if r.Method != http.MethodGet { http.Error(w,"method not allowed",http.StatusMethodNotAllowed); return }
 	w.Header().Set("Content-Type","text/html; charset=utf-8")
-	_ = page.Execute(w,nil)
+	_, _ = w.Write(indexHTML)
 }
 func (a *App) health(w http.ResponseWriter, r *http.Request) {
 	ctx,cancel:=context.WithTimeout(r.Context(),3*time.Second); defer cancel()
