@@ -64,6 +64,7 @@ func(a *App)runImport(ctx context.Context,path,ext,originalFilename string)(int6
 	if len(header)==0{return 0,fmt.Errorf("ไม่พบ Header ในไฟล์")}
 	mapping,err:=a.mapColumns(ctx,len(header)); if err!=nil{return 0,err}
 	originalFilename=filepath.Base(originalFilename)
+	originalFilename=strings.TrimSuffix(originalFilename,filepath.Ext(originalFilename))
 	batch:=make([][]interface{},0,a.cfg.BatchSize)
 	var total int64
 	flush:=func()error {
