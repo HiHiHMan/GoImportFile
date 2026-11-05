@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <meta name="description" content="นำเข้าไฟล์ CSV และ Excel ไปยัง SQL Server">
+  <title>GoImportFile — Data Import</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --text: #172033;
+      --muted: #667085;
+      --line: #e5eaf1;
+      --primary: #176b62;
+      --primary-dark: #10564f;
+      --primary-soft: #eaf5f2;
+      --danger: #b42318;
+      --success: #067647;
+      --shadow: 0 20px 60px rgba(20, 35, 55, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 42px 20px;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(23,107,98,.08), transparent 28rem),
+        radial-gradient(circle at 92% 92%, rgba(63,111,165,.07), transparent 26rem),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, "Segoe UI", Tahoma, sans-serif;
+    }
+    button, input { font: inherit; }
+    .shell { width: min(100%, 760px); }
+    .brand { display: flex; align-items: center; gap: 12px; margin: 0 0 22px 4px; }
+    .brand-mark {
+      width: 42px; height: 42px; display: grid; place-items: center;
+      border-radius: 13px; color: #fff; background: var(--primary);
+      box-shadow: 0 8px 18px rgba(23,107,98,.2);
+    }
+    .brand-mark svg { width: 23px; height: 23px; }
+    .brand-name { font-size: 16px; font-weight: 750; letter-spacing: -.02em; }
+    .brand-caption { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .card {
+      overflow: hidden; background: var(--surface); border: 1px solid rgba(229,234,241,.9);
+      border-radius: 22px; box-shadow: var(--shadow);
+    }
+    .card-head { padding: 34px 38px 24px; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 7px; color: var(--primary);
+      background: var(--primary-soft); border-radius: 999px; padding: 6px 10px;
+      font-size: 11px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase;
+    }
+    h1 { margin: 15px 0 8px; font-size: clamp(25px, 4vw, 32px); letter-spacing: -.04em; }
+    .intro { margin: 0; color: var(--muted); line-height: 1.7; font-size: 14px; }
+    .card-body { padding: 0 38px 34px; }
+    .dropzone {
+      position: relative; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 230px; padding: 28px 20px;
+      border: 1.5px dashed #c5d1dc; border-radius: 16px; background: #fbfcfe;
+      text-align: center; cursor: pointer; transition: .18s ease;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--primary); background: #f2faf8;
+      box-shadow: inset 0 0 0 1px rgba(23,107,98,.08);
+    }
+    .drop-icon {
+      width: 54px; height: 54px; display: grid; place-items: center;
+      color: var(--primary); background: var(--primary-soft); border-radius: 16px;
+      margin-bottom: 14px;
+    }
+    .drop-icon svg { width: 27px; height: 27px; }
+    .drop-title { font-size: 15px; font-weight: 700; }
+    .drop-subtitle { margin-top: 6px; color: var(--muted); font-size: 13px; }
+    .browse { color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+    .formats { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 18px; }
+    .format {
+      border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px;
+      color: #475467; background: #fff; font-size: 11px; font-weight: 750;
+    }
+    input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .file-info {
+      display: none; align-items: center; gap: 12px; width: 100%; max-width: 470px;
+      margin-top: 20px; padding: 12px; border: 1px solid var(--line);
+      border-radius: 12px; background: #fff; text-align: left;
+    }
+    .file-info.visible { display: flex; }
+    .file-icon {
+      flex: 0 0 38px; height: 42px; display: grid; place-items: center;
+      border-radius: 9px; background: #f0f4f8; color: #475467; font-size: 10px; font-weight: 800;
+    }
+    .file-meta { min-width: 0; flex: 1; }
+    .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; }
+    .file-size { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .remove-file {
+      width: 30px; height: 30px; border: 0; border-radius: 8px; color: #667085;
+      background: transparent; cursor: pointer; font-size: 19px;
+    }
+    .remove-file:hover { background: #f2f4f7; color: var(--danger); }
+    .settings {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px;
+    }
+    .setting { padding: 13px 14px; border: 1px solid var(--line); border-radius: 11px; }
+    .setting-label { color: var(--muted); font-size: 11px; }
+    .setting-value { margin-top: 5px; font-size: 13px; font-weight: 750; }
+    .actions { display: flex; align-items: center; gap: 14px; margin-top: 24px; }
+    .submit {
+      min-height: 48px; flex: 1; display: inline-flex; align-items: center; justify-content: center;
+      gap: 9px; padding: 0 20px; border: 0; border-radius: 11px;
+      background: var(--primary); color: white; font-weight: 750; cursor: pointer;
+      transition: background .18s ease, transform .18s ease;
+    }
+    .submit:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); }
+    .submit:disabled { opacity: .55; cursor: not-allowed; }
+    .submit svg { width: 18px; height: 18px; }
+    .secure-note { color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .result {
+      display: none; margin-top: 18px; padding: 15px 16px; border-radius: 11px;
+      border: 1px solid var(--line); background: #f8fafc;
+    }
+    .result.visible { display: block; }
+    .result.success { border-color: #abefc6; background: #ecfdf3; color: #05603a; }
+    .result.error { border-color: #fecdca; background: #fef3f2; color: #912018; }
+    .result-title { font-size: 13px; font-weight: 800; }
+    .result-detail { margin-top: 5px; font-size: 12px; line-height: 1.7; white-space: pre-line; }
+    .spinner {
+      width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .footer { display: flex; justify-content: space-between; gap: 12px; padding: 18px 38px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    @media (max-width: 600px) {
+      body { padding: 22px 12px; }
+      .card-head { padding: 27px 22px 20px; }
+      .card-body { padding: 0 22px 25px; }
+      .settings { grid-template-columns: 1fr; }
+      .setting { display: flex; justify-content: space-between; align-items: center; }
+      .setting-value { margin-top: 0; }
+      .footer { padding: 16px 22px; flex-direction: column; }
+      .actions { align-items: stretch; flex-direction: column; }
+      .secure-note { text-align: center; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V3m0 0L7 8m5-5 5 5"/><path d="M5 13v5a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-5"/></svg>
+      </div>
+      <div><div class="brand-name">GoImportFile</div><div class="brand-caption">DATA IMPORT TOOL</div></div>
+    </header>
+
+    <section class="card">
+      <div class="card-head">
+        <span class="eyebrow"><span aria-hidden="true">●</span> DATA MANAGEMENT</span>
+        <h1>นำเข้าข้อมูลเข้าสู่ระบบ</h1>
+        <p class="intro">เลือกไฟล์ข้อมูลที่ต้องการนำเข้า ระบบจะจัดเก็บข้อมูลลง SQL Server ตามโครงสร้างตารางที่กำหนดไว้</p>
+      </div>
+
+      <div class="card-body">
+        <form id="importForm">
+          <label class="dropzone" id="dropzone" for="fileInput">
+            <span class="drop-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+            </span>
+            <span class="drop-title">ลากไฟล์มาวางที่นี่</span>
+            <span class="drop-subtitle">หรือ <span class="browse">เลือกไฟล์จากเครื่อง</span></span>
+            <span class="formats"><span class="format">.CSV</span><span class="format">.XLSX</span><span class="format">.XLS</span></span>
+            <input id="fileInput" name="file" type="file" accept=".csv,.xlsx,.xls" required>
+            <span class="file-info" id="fileInfo">
+              <span class="file-icon" id="fileExt">FILE</span>
+              <span class="file-meta"><span class="file-name" id="fileName"></span><span class="file-size" id="fileSize"></span></span>
+              <button class="remove-file" id="removeFile" type="button" aria-label="นำไฟล์ออก">&times;</button>
+            </span>
+          </label>
+
+          <div class="settings" aria-label="รายละเอียดการนำเข้า">
+            <div class="setting"><div class="setting-label">รูปแบบการนำเข้า</div><div class="setting-value">Append only</div></div>
+            <div class="setting"><div class="setting-label">Batch size</div><div class="setting-value">500 rows</div></div>
+            <div class="setting"><div class="setting-label">การทำงาน</div><div class="setting-value">1 job at a time</div></div>
+          </div>
+
+          <div class="actions">
+            <button class="submit" id="submitButton" type="submit">
+              <svg id="submitIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>
+              <span id="submitText">เริ่มนำเข้าข้อมูล</span>
+            </button>
+            <div class="secure-note">ข้อมูลจะถูกเพิ่มต่อท้ายตารางเดิม<br>ไม่มีการลบข้อมูลเก่า</div>
+          </div>
+        </form>
+
+        <section class="result" id="result" role="status" aria-live="polite">
+          <div class="result-title" id="resultTitle"></div>
+          <div class="result-detail" id="resultDetail"></div>
+        </section>
+      </div>
+
+      <footer class="footer"><span>GoImportFile · SQL Server Import</span><span>รองรับไฟล์ CSV, XLSX และ XLS</span></footer>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('importForm');
+    const fileInput = document.getElementById('fileInput');
+    const dropzone = document.getElementById('dropzone');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const fileExt = document.getElementById('fileExt');
+    const removeFile = document.getElementById('removeFile');
+    const submitButton = document.getElementById('submitButton');
+    const submitText = document.getElementById('submitText');
+    const submitIcon = document.getElementById('submitIcon');
+    const result = document.getElementById('result');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultDetail = document.getElementById('resultDetail');
+
+    const allowedExtensions = ['csv', 'xlsx', 'xls'];
+    const formatSize = bytes => {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    };
+
+    function showResult(type, title, detail) {
+      result.className = 'result visible ' + type;
+      resultTitle.textContent = title;
+      resultDetail.textContent = detail || '';
+    }
+
+    function setFile(file) {
+      if (!file) return;
+      const extension = file.name.split('.').pop().toLowerCase();
+      if (!allowedExtensions.includes(extension)) {
+        fileInput.value = '';
+        fileInfo.classList.remove('visible');
+        showResult('error', 'ไม่รองรับไฟล์นี้', 'กรุณาเลือกไฟล์ .csv, .xlsx หรือ .xls');
+        return;
+      }
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      fileInput.files = transfer.files;
+      fileName.textContent = file.name;
+      fileSize.textContent = formatSize(file.size);
+      fileExt.textContent = extension.toUpperCase();
+      fileInfo.classList.add('visible');
+      result.className = 'result';
+    }
+
+    fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+    removeFile.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      fileInput.value = '';
+      fileInfo.classList.remove('visible');
+      result.className = 'result';
+    });
+
+    ['dragenter', 'dragover'].forEach(name => dropzone.addEventListener(name, event => {
+      event.preventDefault();
+      dropzone.classList.add('dragover');
+    }));
+    ['dragleave', 'drop'].forEach(name => dropzone.addEventListener(name, event => {
+      event.preventDefault();
+      dropzone.classList.remove('dragover');
+    }));
+    dropzone.addEventListener('drop', event => {
+      const file = event.dataTransfer.files[0];
+      if (file) setFile(file);
+    });
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const file = fileInput.files[0];
+      if (!file) {
+        showResult('error', 'ยังไม่ได้เลือกไฟล์', 'กรุณาเลือกไฟล์ก่อนเริ่มนำเข้า');
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitIcon.style.display = 'none';
+      submitText.textContent = 'กำลังนำเข้าข้อมูล...';
+      const spinner = document.createElement('span');
+      spinner.className = 'spinner';
+      submitButton.prepend(spinner);
+      showResult('', 'กำลังประมวลผลไฟล์', 'กรุณาอย่าปิดหน้าเว็บจนกว่าระบบจะทำงานเสร็จ');
+
+      try {
+        const response = await fetch('/api/import', { method: 'POST', body: new FormData(form) });
+        let data;
+        try { data = await response.json(); }
+        catch { throw new Error('เซิร์ฟเวอร์ส่งผลลัพธ์กลับมาในรูปแบบที่ไม่ถูกต้อง'); }
+
+        if (!response.ok || !data.success) {
+          showResult('error', 'นำเข้าข้อมูลไม่สำเร็จ', data.message || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์');
+          return;
+        }
+
+        const details = [];
+        if (Number.isFinite(Number(data.rows))) details.push('จำนวนแถวที่นำเข้า: ' + Number(data.rows).toLocaleString('th-TH') + ' แถว');
+        if (data.elapsed) details.push('ใช้เวลา: ' + data.elapsed);
+        showResult('success', 'นำเข้าข้อมูลสำเร็จ', details.join('\n'));
+      } catch (error) {
+        showResult('error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์', error.message);
+      } finally {
+        submitButton.disabled = false;
+        spinner.remove();
+        submitIcon.style.display = '';
+        submitText.textContent = 'เริ่มนำเข้าข้อมูล';
+      }
+    });
+  </script>
+</body>
+</html>
